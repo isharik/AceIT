@@ -1,0 +1,3 @@
+import { NextRequest, NextResponse } from 'next/server'; import { limited, mistral } from '@/lib/server';
+export async function GET(req: NextRequest) { const lim = limited(req); if (lim) return lim; try { const r = await mistral([{ role:'user', content:'Reply with OK.' }], process.env.MISTRAL_FAST_MODEL || 'mistral-small-2603'); const data = await r.json(); return NextResponse.json({ ok:true, model:data.model || process.env.MISTRAL_FAST_MODEL, reply:data.choices?.[0]?.message?.content }); } catch (e) { return NextResponse.json({ ok:false, error:e instanceof Error ? e.message : 'Health check failed' }, { status:500 }); } }
+
