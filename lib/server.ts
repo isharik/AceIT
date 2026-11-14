@@ -16,6 +16,32 @@ export async function chatCompletion(messages: Array<{ role: 'system'|'user'|'as
   if (!response.ok) { const msg = await response.text(); throw Object.assign(new Error(msg.slice(0, 500) || 'NVIDIA endpoint request failed'), { status: response.status }); }
   return response;
 }
+export async function chatStream(messages: Array<{ role: 'system'|'user'|'assistant'; content: string }>) {
+  const primary = process.env.NVIDIA_PRIMARY_MODEL || 'mistralai/mistral-large-4-1t-a52b';
+  const fast = process.env.NVIDIA_FAST_MODEL || 'openai/gpt-oss-20b';
+  let failure: Error | undefined;
+  for (const [model, isFast] of [[primary, false], [fast, true]] as const) {
+    try {
+      const key = process.env.NVIDIA_API_KEY;
+      if (!key) throw new Error('NVIDIA_API_KEY is missing. Add it to Vercel and redeploy.');
+      const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+        body: JSON.stringify({ model, messages, stream: true, temperature: .7, max_tokens: 4096 }),
+        signal: AbortSignal.timeout(45000),
+      });
+      if (response.ok && response.body) return { response, fast: isFast };
+      const detail = (await response.text()).slice(0, 500);
+      failure = Object.assign(new Error(detail || 'NVIDIA endpoint request failed'), { status: response.status });
+      if (response.status < 500 && response.status !== 429) break;
+    } catch (error) {
+      failure = error instanceof Error ? error : new Error('NVIDIA endpoint request failed');
+      const status = (error as { status?: number }).status;
+      if (status && status < 500 && status !== 429) break;
+    }
+  }
+  throw failure || new Error('NVIDIA endpoint request failed.');
+}
 export async function generate(messages: Array<{ role:'system'|'user'|'assistant'; content:string }>) {
   const primary = process.env.NVIDIA_PRIMARY_MODEL || 'mistralai/mistral-large-4-1t-a52b'; const fast = process.env.NVIDIA_FAST_MODEL || 'openai/gpt-oss-20b';
   let failure: unknown;
