@@ -19,10 +19,8 @@ export async function chatCompletion(messages: Array<{ role: 'system'|'user'|'as
 export async function generate(messages: Array<{ role:'system'|'user'|'assistant'; content:string }>) {
   const primary = process.env.NVIDIA_PRIMARY_MODEL || 'mistralai/mistral-large-4-1t-a52b'; const fast = process.env.NVIDIA_FAST_MODEL || 'openai/gpt-oss-20b';
   let failure: unknown;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try { return { text: (await (await chatCompletion(messages, primary)).json()).choices?.[0]?.message?.content as string, fast: false }; }
-    catch (e) { failure = e; const status = (e as {status?:number}).status; if (status && status < 500 && status !== 429) throw e; if (attempt === 0) await new Promise(r => setTimeout(r, 500)); }
-  }
+  try { return { text: (await (await chatCompletion(messages, primary)).json()).choices?.[0]?.message?.content as string, fast: false }; }
+  catch (e) { failure = e; const status = (e as {status?:number}).status; if (status && status < 500 && status !== 429) throw e; }
   try { return { text: (await (await chatCompletion(messages, fast)).json()).choices?.[0]?.message?.content as string, fast: true }; }
   catch { throw failure; }
 }

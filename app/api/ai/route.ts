@@ -15,9 +15,10 @@ export async function POST(req:NextRequest){
   if(mode==='humanize'){const r=await generate([{role:'system',content:HUMANIZER_PROMPT.replace('{style_profile}',style||'Natural, clear and direct.')},{role:'user',content:question}]);return eventStream(r.text||'',r.fast);}
   const system=MAIN_PROMPT.replace('{resume}',resume||'No resume supplied').replace('{jd}',jd||'No job description supplied').replace('{mode}',mode).replace('{length}',length).replace('{style_profile}',style||'Conversational, clear and specific.');
   const prompt=mode==='mock'?(answer?`Evaluate the candidate's answer to this question. Give score /10, what worked, what to improve, a stronger spoken version, then ONE next interview question. Clearly label each section. Do not answer as candidate.\nQuestion: ${question}\nCandidate answer: ${answer}`:`Ask exactly ONE first interview question based on the job and resume. Return only the question.`):`Write a spoken answer to this interview question: ${question}`;
-  const draft=await generate([{role:'system',content:system},{role:'user',content:prompt}]);
-  if(mode==='mock'&&!answer)return eventStream(draft.text||'',draft.fast);
-  const polished=await generate([{role:'system',content:HUMANIZER_PROMPT.replace('{style_profile}',style||'Conversational, clear and specific.')},{role:'user',content:draft.text||''}]);
-  return eventStream(polished.text||'',draft.fast||polished.fast);
+  // Return the answer in one model call. A second polishing call made normal
+  // interview answers wait twice as long and can leave the UI in its thinking state.
+  const result=await generate([{role:'system',content:system},{role:'user',content:prompt}]);
+  if(!result.text?.trim())return NextResponse.json({error:'The model returned an empty answer. Please try again.'},{status:502});
+  return eventStream(result.text,result.fast);
  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Could not generate an answer.'},{status:500});}
 }
