@@ -9,14 +9,15 @@ export function limited(req: NextRequest): NextResponse | null {
   return null;
 }
 export function safeText(v: unknown, max = 16000): string { return typeof v === 'string' ? v.split('\u0000').join('').slice(0, max).trim() : ''; }
-export async function chatCompletion(messages: Array<{ role: 'system'|'user'|'assistant'; content: string }>, model?: string) {
+export async function chatCompletion(messages: Array<{ role: 'system'|'user'|'assistant'; content: string }>, model?: string, maxTokens = 1200) {
   const key = process.env.NVIDIA_API_KEY;
   if (!key) throw new Error('NVIDIA_API_KEY is missing. Add it to .env.local and restart the app.');
-  const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ model: model || process.env.NVIDIA_PRIMARY_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b', messages, stream: false, temperature: .7, max_tokens: 4096 }), signal: AbortSignal.timeout(45000) });
+  const selectedModel = model || process.env.NVIDIA_PRIMARY_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b';
+  const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ model: selectedModel, messages, stream: false, temperature: .7, max_tokens: maxTokens, ...(selectedModel.startsWith('nvidia/nemotron') ? { extra_body: { chat_template_kwargs: { enable_thinking: false } } } : {}) }), signal: AbortSignal.timeout(45000) });
   if (!response.ok) { const msg = await response.text(); throw Object.assign(new Error(msg.slice(0, 500) || 'NVIDIA endpoint request failed'), { status: response.status }); }
   return response;
 }
-export async function chatStream(messages: Array<{ role: 'system'|'user'|'assistant'; content: string }>) {
+export async function chatStream(messages: Array<{ role: 'system'|'user'|'assistant'; content: string }>, maxTokens = 2048) {
   const primary = process.env.NVIDIA_PRIMARY_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b';
   const fast = process.env.NVIDIA_FAST_MODEL || 'openai/gpt-oss-20b';
   let failure: Error | undefined;
@@ -27,7 +28,7 @@ export async function chatStream(messages: Array<{ role: 'system'|'user'|'assist
       const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
         method: 'POST',
         headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify({ model, messages, stream: true, temperature: .7, max_tokens: 4096 }),
+        body: JSON.stringify({ model, messages, stream: true, temperature: .7, max_tokens: maxTokens, ...(model.startsWith('nvidia/nemotron') ? { extra_body: { chat_template_kwargs: { enable_thinking: false } } } : {}) }),
         signal: AbortSignal.timeout(45000),
       });
       if (response.ok && response.body) return { response, fast: isFast };
@@ -45,9 +46,9 @@ export async function chatStream(messages: Array<{ role: 'system'|'user'|'assist
 export async function generate(messages: Array<{ role:'system'|'user'|'assistant'; content:string }>) {
   const primary = process.env.NVIDIA_PRIMARY_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b'; const fast = process.env.NVIDIA_FAST_MODEL || 'openai/gpt-oss-20b';
   let failure: unknown;
-  try { return { text: (await (await chatCompletion(messages, primary)).json()).choices?.[0]?.message?.content as string, fast: false }; }
+  try { return { text: (await (await chatCompletion(messages, primary, 900)).json()).choices?.[0]?.message?.content as string, fast: false }; }
   catch (e) { failure = e; const status = (e as {status?:number}).status; if (status && status < 500 && status !== 429) throw e; }
-  try { return { text: (await (await chatCompletion(messages, fast)).json()).choices?.[0]?.message?.content as string, fast: true }; }
+  try { return { text: (await (await chatCompletion(messages, fast, 900)).json()).choices?.[0]?.message?.content as string, fast: true }; }
   catch { throw failure; }
 }
 
