@@ -13,7 +13,7 @@ export async function chatCompletion(messages: Array<{ role: 'system'|'user'|'as
   const key = process.env.NVIDIA_API_KEY;
   if (!key) throw new Error('NVIDIA_API_KEY is missing. Add it to .env.local and restart the app.');
   const selectedModel = model || process.env.NVIDIA_PRIMARY_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b';
-  const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ model: selectedModel, messages, stream: false, temperature: .7, max_tokens: maxTokens, ...(selectedModel.startsWith('nvidia/nemotron') ? { extra_body: { chat_template_kwargs: { enable_thinking: false } } } : {}) }), signal: AbortSignal.timeout(45000) });
+  const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ model: selectedModel, messages, stream: false, temperature: .7, max_tokens: maxTokens, ...(selectedModel.startsWith('nvidia/nemotron') ? { chat_template_kwargs: { enable_thinking: false } } : {}) }), signal: AbortSignal.timeout(45000) });
   if (!response.ok) { const msg = await response.text(); throw Object.assign(new Error(msg.slice(0, 500) || 'NVIDIA endpoint request failed'), { status: response.status }); }
   return response;
 }
@@ -28,7 +28,7 @@ export async function chatStream(messages: Array<{ role: 'system'|'user'|'assist
       const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
         method: 'POST',
         headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify({ model, messages, stream: true, temperature: .7, max_tokens: maxTokens, ...(model.startsWith('nvidia/nemotron') ? { extra_body: { chat_template_kwargs: { enable_thinking: false } } } : {}) }),
+        body: JSON.stringify({ model, messages, stream: true, temperature: .7, max_tokens: maxTokens, ...(model.startsWith('nvidia/nemotron') ? { chat_template_kwargs: { enable_thinking: false } } : {}) }),
         signal: AbortSignal.timeout(45000),
       });
       if (response.ok && response.body) return { response, fast: isFast };
