@@ -12,12 +12,12 @@ export function safeText(v: unknown, max = 16000): string { return typeof v === 
 export async function chatCompletion(messages: Array<{ role: 'system'|'user'|'assistant'; content: string }>, model?: string) {
   const key = process.env.NVIDIA_API_KEY;
   if (!key) throw new Error('NVIDIA_API_KEY is missing. Add it to .env.local and restart the app.');
-  const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ model: model || process.env.NVIDIA_PRIMARY_MODEL || 'nvidia/nemotron-3.5-super-vl-120b-a12b', messages, stream: false, temperature: .7, max_tokens: 4096 }), signal: AbortSignal.timeout(45000) });
+  const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ model: model || process.env.NVIDIA_PRIMARY_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b', messages, stream: false, temperature: .7, max_tokens: 4096 }), signal: AbortSignal.timeout(45000) });
   if (!response.ok) { const msg = await response.text(); throw Object.assign(new Error(msg.slice(0, 500) || 'NVIDIA endpoint request failed'), { status: response.status }); }
   return response;
 }
 export async function chatStream(messages: Array<{ role: 'system'|'user'|'assistant'; content: string }>) {
-  const primary = process.env.NVIDIA_PRIMARY_MODEL || 'nvidia/nemotron-3.5-super-vl-120b-a12b';
+  const primary = process.env.NVIDIA_PRIMARY_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b';
   const fast = process.env.NVIDIA_FAST_MODEL || 'openai/gpt-oss-20b';
   let failure: Error | undefined;
   for (const [model, isFast] of [[primary, false], [fast, true]] as const) {
@@ -43,7 +43,7 @@ export async function chatStream(messages: Array<{ role: 'system'|'user'|'assist
   throw failure || new Error('NVIDIA endpoint request failed.');
 }
 export async function generate(messages: Array<{ role:'system'|'user'|'assistant'; content:string }>) {
-  const primary = process.env.NVIDIA_PRIMARY_MODEL || 'nvidia/nemotron-3.5-super-vl-120b-a12b'; const fast = process.env.NVIDIA_FAST_MODEL || 'openai/gpt-oss-20b';
+  const primary = process.env.NVIDIA_PRIMARY_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b'; const fast = process.env.NVIDIA_FAST_MODEL || 'openai/gpt-oss-20b';
   let failure: unknown;
   try { return { text: (await (await chatCompletion(messages, primary)).json()).choices?.[0]?.message?.content as string, fast: false }; }
   catch (e) { failure = e; const status = (e as {status?:number}).status; if (status && status < 500 && status !== 429) throw e; }

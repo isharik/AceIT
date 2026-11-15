@@ -10,7 +10,7 @@ A responsive interview practice app for AI training, LLM evaluation, and data an
 4. Run `npm run dev` and open http://localhost:3000.
 5. Visit `/api/health` to make a small test call.
 
-The default model is `nvidia/nemotron-3.5-super-vl-120b-a12b`, called through `https://integrate.api.nvidia.com/v1/chat/completions`. NVIDIA Build lists this model with a free prototype endpoint. The fallback model is `openai/gpt-oss-20b`, which also has a free endpoint. Free endpoint availability and limits can change; check the [Nemotron 3.5 Super VL Build page](https://build.nvidia.com/nvidia/nemotron-3.5-super-vl-120b-a12b/deploy) and [NVIDIA API catalog](https://build.nvidia.com/explore) for current status.
+The default model is `nvidia/nemotron-3-ultra-550b-a55b`, called through `https://integrate.api.nvidia.com/v1/chat/completions`. NVIDIA Build lists this model with a free prototype endpoint. The fallback model is `openai/gpt-oss-20b`, which also has a free endpoint. Free endpoint availability and limits can change; check the [Nemotron 3 Ultra Build page](https://build.nvidia.com/nvidia/nemotron-3-ultra-550b-a55b) and [NVIDIA API catalog](https://build.nvidia.com/explore) for current status.
 
 ## Deploy
 
